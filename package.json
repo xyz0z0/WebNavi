@@ -1,0 +1,25 @@
+{
+  "name": "webnavi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tsc": "npx tsc",
+    "run": "npx tsc && node ./dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/koa": "^2.14.0",
+    "ejs": "^3.1.9",
+    "koa": "^2.15.0",
+    "koa-body": "^6.0.1",
+    "koa-router": "^12.0.1",
+    "koa-static": "^5.0.0",
+    "koa-views": "^8.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
