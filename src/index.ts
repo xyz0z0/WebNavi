@@ -1,83 +1,87 @@
-import { Context, DefaultContext } from "koa";
+import Koa, { DefaultContext } from 'koa';
+import fs from 'fs/promises';
+import path from 'path';
+import bodyParse from 'koa-bodyparser';
+import render from 'koa-ejs';
+import bodyParser from 'koa-bodyparser';
+const Router = require('koa-router')
+import { renderClickableLinks } from './utils'; // 导入辅助函数
 
+const app = new Koa()
 
-// // app.js
-// const Koa = require('koa')
-// const path = require('path')
-// const fs = require('fs')
-// const koaStatic = require('koa-static')
-// const Router = require('koa-router')
-// // const koaBody = require('koa-body');
-// import koaBody from "koa-body";
-// import views from "koa-views";
-// const app = new Koa()
-// const router = new Router()
+const router = new Router()
+const dataPath = path.join(__dirname, "../static/data.json")
+render(app, {
+    root: path.join(__dirname, "../static"),
+    layout: false,
+    viewExt: 'html',
+    cache: false,
+    debug: false
+});
 
-// const staticPath = '../static'
+// 中间件用于读取 JSON 文件
+app.use(async (ctx, next) => {
+    try {
+        // 读取 JSON 文件内容
+        const jsonData = await fs.readFile(dataPath, 'utf8');
+        const data = JSON.parse(jsonData);
+        ctx.state.data = data; // 将数据存储在 Koa 上下文中，以便后续中间件可以访问
+    } catch (error) {
+        console.error('Error reading JSON file:', error);
+        ctx.state.data = []; // 如果文件不存在或读取失败，将数据设置为空数组
+    }
+    await next();
+});
 
-// app.use(koaBody({
-//     multipart: true,
-//     formidable: {
-//         maxFileSize: 200 * 1024 * 1024 // 设置上传文件的限制, 默认2MB
-//     }
-// }));
+router.get('/', async (ctx: DefaultContext) => {
+    console.log(">>>> index ");
 
-// app.use(koaStatic(
-//     path.join(__dirname, staticPath)
-// ))
-
-
-// const viewPath: string = path.join(__dirname, '../static')
-// console.log('-->' + viewPath)
-// app.use(views(viewPath, {
-//     extension: 'html'
-// }))
-
-
-// // app.use('/', async (ctx: Context) => {
-// //     let title = 'koa'
-// //     await ctx.render('upload', {
-// //         title
-// //     })
-// // })
-
-// app.use(router.routes())
-
-// router.post('/upload', async (ctx: DefaultContext) => {
-//     // 获取文件对象
-//     const file = ctx.request.files.file
-//     // 读取文件内容
-//     const data = fs.readFileSync(file.path);
-//     // 保存到服务端
-//     fs.writeFileSync(path.join(__dirname, file.name), data);
-//     ctx.body = { message: '上传成功！' };
-// })
-
-// app.listen(4000, () => {
-//     console.log('server is running, port is 4000')
-// })
-
-const Koa = require('koa');
-const views = require('koa-views')
-const path = require('path')
-const app = new Koa();
-
-const viewPath: string = path.join(__dirname, '../static')
-console.log('-->' + viewPath)
-app.use(views(viewPath, {
-    extension: 'ejs'
-}))
-
-app.use(async (ctx: Context) => {
     let title = 'koa'
-    let data = ["test","test2"]
+    let data = ctx.state.data
     await ctx.render('test', {
-data,
-        title
-    })
+        data,
+        title,
+        renderClickableLinks
+    }, { escape: false })
 })
 
-app.listen(1000);
-console.log('server is running, port is 1000');
 
 
+router.get('/info', async (ctx: DefaultContext) => {
+    ctx.body = '200: this is updateUserInfo request'
+})
+
+router.post('/submit', async (ctx: DefaultContext) => {
+    console.log("-->" + ctx.request.body);
+
+    const content = ctx.request.body.content;
+    try {
+        // 读取原始的 JSON 文件内容
+        const jsonData = await fs.readFile(dataPath, 'utf8');
+        const data = JSON.parse(jsonData);
+
+        // 合并新数据
+        const updatedData = [...data, { url: content }];
+
+        // 将更新后的数据写入 JSON 文件
+        await fs.writeFile(dataPath, JSON.stringify(updatedData, null, 2));
+
+        ctx.body = { "redirectTo": "/" };
+
+    } catch (error) {
+        console.error('Error writing JSON file:', error);
+        ctx.status = 500; // 写入失败时返回 500 状态码
+        ctx.body = { error: 'Error writing JSON file' };
+    }
+})
+
+
+app.use(bodyParser());
+// 加载路由中间件
+app.use(router.routes()).use(async (ctx) => {
+    ctx.body = '404: no router match'
+})
+
+app.listen(1234, () => {
+    console.log('server is running, port is 1234')
+})

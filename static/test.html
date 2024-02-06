@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EJS 页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-form {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-form textarea {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical; /* 允许垂直调整大小 */
+            overflow-y: auto; /* 在内容超出文本框时显示滚动条 */
+        }
+        .input-form button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #1da1f2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .tweets {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .tweet {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>输入框和按钮</h1>
+        <form class="input-form" id="myForm">
+            <textarea id="inputText" placeholder="输入文字" rows="4"></textarea>
+            <button type="submit">提交</button>
+        </form>
+        <h1>列表数据</h1>
+        <ul class="tweets" id="myList">
+            <!-- <% data.forEach(item => { %>
+                <li class="tweet"><%= item.url %></li>
+            <% }); %> -->
+            <% data.forEach(item => { %>
+                <li class="tweet"><%- renderClickableLinks(item.url) %></li>
+            <% }); %>
+        </ul>
+    </div>
+
+    <script>
+        // 提交表单数据并处理重定向
+        document.getElementById('myForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // 阻止默认提交行为
+            var inputText = document.getElementById('inputText').value;
+            if (!inputText.trim()) {
+                alert('请输入内容'); // 如果内容为空，则提示用户
+                return;
+            }
+            fetch('/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content: inputText })
+            }).then(function(response) {
+                return response.json();
+            }).then(function(data) {
+                if (data.redirectTo) {
+                    // 如果有重定向URL，则重新加载页面以展示最新数据
+                    window.location.href = data.redirectTo;
+                }
+            }).catch(function(error) {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
