@@ -1,87 +1,49 @@
-import Koa, { DefaultContext } from 'koa';
-import fs from 'fs/promises';
-import path from 'path';
-import bodyParse from 'koa-bodyparser';
-import render from 'koa-ejs';
-import bodyParser from 'koa-bodyparser';
-const Router = require('koa-router')
-import { renderClickableLinks } from './utils'; // 导入辅助函数
+import { DefaultContext } from "koa";
 
-const app = new Koa()
+// app.js
+const koa = require('koa');
+const bodyParser = require('koa-bodyparser');
+const app = new koa();
+const Router = require('koa-router');
+const router = new Router();
+const koaStatic = require('koa-static');
+const path = require('path');
 
-const router = new Router()
-const dataPath = path.join(__dirname, "../static/data.json")
-render(app, {
-    root: path.join(__dirname, "../static"),
-    layout: false,
-    viewExt: 'html',
-    cache: false,
-    debug: false
-});
+const { sign } = require('jsonwebtoken');
+const secret = 'my_secret';
+const jwt = require('koa-jwt')({ secret });
 
-// 中间件用于读取 JSON 文件
-app.use(async (ctx, next) => {
-    try {
-        // 读取 JSON 文件内容
-        const jsonData = await fs.readFile(dataPath, 'utf8');
-        const data = JSON.parse(jsonData);
-        ctx.state.data = data; // 将数据存储在 Koa 上下文中，以便后续中间件可以访问
-    } catch (error) {
-        console.error('Error reading JSON file:', error);
-        ctx.state.data = []; // 如果文件不存在或读取失败，将数据设置为空数组
-    }
-    await next();
-});
+app.use(bodyParser())
+app.use(koaStatic(path.join(__dirname, '../static')))
 
-router.get('/', async (ctx: DefaultContext) => {
-    console.log(">>>> index ");
-
-    let title = 'koa'
-    let data = ctx.state.data
-    await ctx.render('test', {
-        data,
-        title,
-        renderClickableLinks
-    }, { escape: false })
-})
-
-
-
-router.get('/info', async (ctx: DefaultContext) => {
-    ctx.body = '200: this is updateUserInfo request'
-})
-
-router.post('/submit', async (ctx: DefaultContext) => {
-    console.log("-->" + ctx.request.body);
-
-    const content = ctx.request.body.content;
-    try {
-        // 读取原始的 JSON 文件内容
-        const jsonData = await fs.readFile(dataPath, 'utf8');
-        const data = JSON.parse(jsonData);
-
-        // 合并新数据
-        const updatedData = [...data, { url: content }];
-
-        // 将更新后的数据写入 JSON 文件
-        await fs.writeFile(dataPath, JSON.stringify(updatedData, null, 2));
-
-        ctx.body = { "redirectTo": "/" };
-
-    } catch (error) {
-        console.error('Error writing JSON file:', error);
-        ctx.status = 500; // 写入失败时返回 500 状态码
-        ctx.body = { error: 'Error writing JSON file' };
+router.post('/login', async (ctx: DefaultContext, next: any) => {
+    const { userName } = ctx.request.body;
+    if (userName) {
+        const token = sign({ userName }, secret, {
+            expiresIn:
+                '1h'
+        });
+        ctx.body = {
+            mssage: 'get token success!',
+            code: 1,
+            token
+        }
+    } else {
+        ctx.body = {
+            message: 'param error',
+            code: -1
+        }
     }
 })
 
 
-app.use(bodyParser());
-// 加载路由中间件
-app.use(router.routes()).use(async (ctx) => {
-    ctx.body = '404: no router match'
+router.get('/welcome', jwt, async (ctx: DefaultContext, next: any) => {
+    ctx.body = { message: 'welcome!!!' }
 })
 
+app
+    .use(router.routes())
+    .use(router.allowedMethods())
 app.listen(1234, () => {
     console.log('server is running, port is 1234')
 })
